@@ -19,7 +19,6 @@ Commands:
 #   (code:s, n:i) -> ?
     If `n` is above zero, `code` is executed that amount of times. Before each execution,
     the iteration number is pushed to the stack, starting at 0.
-£   (a, b, c) -> (b, c, a)
 $   (a, b) -> (b, a)
 %   a -> (a, a)         deep copy
 [   (..?, n:i) -> c:a
