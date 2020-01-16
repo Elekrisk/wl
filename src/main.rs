@@ -1,5 +1,6 @@
 extern crate num;
 use num::BigInt;
+use num::Zero;
 use std::collections::HashMap;
 
 fn main() {
@@ -18,8 +19,7 @@ fn main() {
 
 struct State
 {
-    stack: Vec<Value>,
-    funcs: HashMap<String, Function>
+    stack: Vec<Value>
 }
 
 impl State
@@ -28,8 +28,7 @@ impl State
     {
         State
         {
-            stack: vec![],
-            funcs: HashMap::new()
+            stack: vec![]
         }
     }
 
@@ -49,17 +48,12 @@ impl State
     }
 }
 
+#[derive(Clone)]
 enum Value
 {
     String(String),
     Integer(BigInt),
-    Function(Function)
-}
-
-enum Function
-{
-    User(String),
-    Builtin(Box<dyn Fn(&mut State) -> ()>)
+    Array(Vec<Value>)
 }
 
 struct Buffer<T: Iterator<Item = char>>
@@ -214,7 +208,6 @@ fn eval<T: Iterator<Item = char>>(buffer: &mut Buffer<T>, state: &mut State) -> 
                     {
                         (Value::String(a), Value::Integer(b)) =>
                         {
-                            use crate::num::Zero;
                             let mut r = String::new();
                             let mut i = BigInt::zero();
                             while i < b
@@ -270,6 +263,176 @@ fn eval<T: Iterator<Item = char>>(buffer: &mut Buffer<T>, state: &mut State) -> 
                 else
                 {
                     return Err("Operator '!' expected one value on the stack".to_string())
+                }
+            },
+            '@' =>
+            {
+                if state.stack.len() >= 2
+                {
+                    let i = state.stack.pop().unwrap();
+                    let a = state.stack.pop().unwrap();
+                    match (a, i)
+                    {
+                        (Value::Array(mut a), Value::Integer(i)) =>
+                        {
+                            use num::ToPrimitive;
+                            let item = a.remove(i.to_usize().unwrap());
+                            state.stack.push(Value::Array(a));
+                            state.stack.push(item);
+                        },
+                        _ => return Err("Indexing can only be done with an array and an integer".to_string())
+                    }
+                }
+                else
+                {
+                    return Err("Operator '@' expected two values on the stack".to_string());
+                }
+            },
+            '#' =>
+            {
+                if state.stack.len() >= 2
+                {
+                    let n = state.stack.pop().unwrap();
+                    let code = state.stack.pop().unwrap();
+
+                    match (code, n)
+                    {
+                        (Value::String(code), Value::Integer(n)) =>
+                        {
+                            let mut i = BigInt::zero();
+                            while i < n {
+                                state.stack.push(Value::Integer(i.clone()));
+                                eval(&mut Buffer::new(code.chars()), state)?;
+                                i += 1;
+                            }
+                        },
+                        _ => return Err("Operator '#' expected a string and an integer".to_string())
+                    }
+                }
+                else
+                {
+                    return Err("Operator '#' expected two values on the stack".to_string());
+                }
+            },
+            '$' =>
+            {
+                if state.stack.len() >= 2
+                {
+                    let b = state.stack.pop().unwrap();
+                    let a = state.stack.pop().unwrap();
+
+                    state.stack.push(b);
+                    state.stack.push(a);
+                }
+                else
+                {
+                    return Err("Operator '$' expected one value on the stack".to_string());
+                }
+            },
+            '%' =>
+            {
+                if state.stack.len() >= 1
+                {
+                    let a = state.stack.pop().unwrap();
+                    let b = a.clone();
+
+                    state.stack.push(a);
+                    state.stack.push(b);
+                }
+                else
+                {
+                    return Err("Operator '%' expected one value on the stack".to_string());
+                }
+            },
+            '[' =>
+            {
+                if state.stack.len() >= 1
+                {
+                    let num = state.stack.pop().unwrap();
+                    
+                    match num
+                    {
+                        Value::Integer(num) =>
+                        {
+                            let mut vec = vec![];
+                            let mut i = BigInt::zero();
+                            while i < num
+                            {
+                                let val = state.stack.pop().unwrap();
+                                vec.insert(0, val);
+                                i += 1;
+                            }
+                            state.stack.push(Value::Array(vec));
+                        }
+                        _ => return Err("Operator '[' expected an integer".to_string())
+                    }
+                }
+                else
+                {
+                    return Err("Operator '[' expected at least one value on the stack".to_string());
+                }
+            },
+            ']' =>
+            {
+                if state.stack.len() >= 1
+                {
+                    let vec = state.stack.pop().unwrap();
+                    match vec
+                    {
+                        Value::Array(mut vec) =>
+                        {
+                            while vec.len() > 0
+                            {
+                                let item = vec.remove(0);
+                                state.stack.push(item);
+                            }
+                        },
+                        _ => return Err("Operator ']' expected an array".to_string())
+                    }
+                }
+                else
+                {
+                    return Err("Operator ']' expected one value on the stack".to_string());
+                }
+            },
+            '?' =>
+            {
+                if state.stack.len() >= 3
+                {
+                    let c = state.stack.pop().unwrap();
+                    let f = state.stack.pop().unwrap();
+                    let t = state.stack.pop().unwrap();
+
+                    match (t, f, c)
+                    {
+                        (Value::String(t), Value::String(f), Value::Integer(c)) =>
+                        {
+                            if c != BigInt::zero()
+                            {
+                                eval(&mut Buffer::new(t.chars()), state);
+                            }
+                            else
+                            {
+                                eval(&mut Buffer::new(f.chars()), state);
+                            }
+                        },
+                        _ => return Err("Operator '?' expected two strings and an integer".to_string())
+                    }
+                }
+                else
+                {
+                    return Err("Operator '?' expected three values on the stack".to_string());
+                }
+            },
+            ';' =>
+            {
+                if state.stack.len() >= 1
+                {
+                    state.stack.pop().unwrap();
+                }
+                else
+                {
+                    return Err("Operator ';' expected one value on the stack".to_string());
                 }
             }
             ' ' | '\n' | '\t' | '\r' => (),
