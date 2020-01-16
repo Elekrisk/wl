@@ -1,0 +1,31 @@
+WL is a stack-based language.
+
+A series of digits is pushed as an integer to the stack.
+A series of characters surrounded by "" is pushed as a string to the stack with escape sequences.
+A series of characters surrounded by {} is pushed as a string to the stack without escape sequences.
+  This allows nested strings.
+A series of letters are evaluated as a global variable and pushed to the stack.
+
+Commands:
++   (a, b) -> c         c = a + b
+-   (a:i, b:i) -> c:i   c = a - b
+*   (a, b:i) -> c       c = a * b
+/   (a:i, b:i) -> c:i   c = a / b
+!   (code:s) -> ?
+    Executes `code` as WL code, sharing stack.
+@   (a:a, n:i) -> (a, a[n])
+    The n-th value of the array `a` is removed from `a`, and `a` and the item are pushed to the
+    stack, in that order. Negative indices are counted from the end of the array.
+#   (code:s, n:i) -> ?
+    If `n` is above zero, `code` is executed that amount of times. Before each execution,
+    the iteration number is pushed to the stack, starting at 0.
+£   (a, b, c) -> (b, c, a)
+$   (a, b) -> (b, a)
+%   a -> (a, a)         deep copy
+[   (..?, n:i) -> c:a
+    Pops one value, an integer. It then pops n amount of values, and pushes an array containing
+    those values, the bottommost one being at index 0.
+?   (z:s, n:s, c:i) -> ?
+    If `c` is zero, `z` is executed, else, `n` is.
+;   (a) -> ()
+
