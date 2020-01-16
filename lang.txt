@@ -26,7 +26,7 @@ $   (a, b) -> (b, a)
     those values, the bottommost one being at index 0.
 ]   (a:a) -> ?
     Pops an array and pushes all it's items to the stack, starting from index 0.
-?   (z:s, n:s, c:i) -> ?
-    If `c` is zero, `z` is executed, else, `n` is.
+?   (t:s, f:s, c:i) -> ?
+    If `c` is nonzero, `t` is executed, else, `f` is.
 ;   (a) -> ()
 
